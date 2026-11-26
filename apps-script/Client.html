@@ -10,6 +10,7 @@ const paths = {
   calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 10h18"/>',
   chevron:'<path d="m9 5 7 7-7 7"/>', plus:'<path d="M12 5v14M5 12h14"/>',
   upload:'<path d="M12 16V3m-5 5 5-5 5 5M4 15v5h16v-5"/>',
+  download:'<path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/>',
   check:'<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>',
   info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/>',
   search:'<circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/>',
@@ -209,12 +210,13 @@ function updateTable() {
 const dialog = $('#dialog');
 const field = (label, control) => '<label class="field">'+label+control+'</label>';
 const input = (name,value='',type='text',attributes='') => '<input type="'+type+'" name="'+name+'" value="'+esc(value)+'" '+attributes+'>';
-const area = (name,value='',required=false) => '<textarea name="'+name+'" rows="3" maxlength="10000" '+(required?'required':'')+'>'+esc(value)+'</textarea>';
+const area = (name,value='',required=false,rows=3) => '<textarea name="'+name+'" rows="'+rows+'" maxlength="10000" '+(required?'required':'')+'>'+esc(value)+'</textarea>';
 const option = (value,label,selected) => '<option value="'+esc(value)+'" '+(String(value)===String(selected)?'selected':'')+'>'+esc(label)+'</option>';
 const closeButton = button('닫기','close');
 const submitButton = '<button class="btn primary" type="submit">저장</button>';
 
-function openDialog(title, content, footer, handler) {
+function openDialog(title, content, footer, handler, kind='') {
+  dialog.className=kind;
   $('#dialog-inner').innerHTML='<form><div class="dialog-head"><h2 id="dialog-title">'+title+'</h2>'+closeButton+
     '</div><div class="dialog-body">'+content+'<p class="form-error" role="alert" hidden></p></div><div class="dialog-foot">'+footer+'</div></form>';
   dialog.setAttribute('aria-labelledby','dialog-title');
@@ -257,17 +259,20 @@ function personForm(p = {}) {
 function logForm(log = {}, selected) {
   if (!state.participants.length) return openDialog('일지 작성','<p class="detail-text">먼저 참여자를 등록하거나 엑셀 명단을 가져와 주세요.</p>',
     button('엑셀 가져오기','import','upload')+button('참여자 등록','new-person','plus',true));
-  const checks = (name,values,checked=[]) => '<div class="check-grid">'+values.map(v=>'<label><input type="checkbox" name="'+name+
-    '" value="'+esc(v)+'" '+(checked.includes(v)?'checked':'')+'> '+esc(v)+'</label>').join('')+'</div>';
+  const checks = (name,label,values,checked=[]) => '<fieldset class="log-checks"><legend>'+label+'</legend><div class="check-grid">'+
+    values.map(v=>'<label><input type="checkbox" name="'+name+'" value="'+esc(v)+'" '+
+    (checked.includes(v)?'checked':'')+'> '+esc(v)+'</label>').join('')+'</div></fieldset>';
   const people = '<select name="participant_id" required><option value="">참여자 선택</option>'+state.participants.map(p=>
     option(p.id,p.name+(p.region?' · '+p.region:''),log.participant_id??selected)).join('')+'</select>';
-  openDialog(log.id?'일지 수정':'일지 작성',field('참여자',people)+'<div class="fields">'+
-    field('상담 날짜',input('date',log.date||today,'date','required'))+field('상담 시간',input('time',log.time,'time'))+'</div>'+
-    '<strong>상담 유형</strong>'+checks('channels',['전화','내방','기타'],log.channels)+
-    '<strong>기기 점검</strong>'+checks('checks',state.devices,log.checks)+field('상담 내용',area('content',log.content,true))+
-    field('슈퍼비전',area('supervision',log.supervision))+field('사진 (JPG, PNG, WebP · 최대 3MB)',
+  openDialog(log.id?'일지 수정':'일지 작성','<div class="log-layout"><div class="log-context">'+
+    field('참여자',people)+'<div class="fields">'+field('상담 날짜',input('date',log.date||today,'date','required'))+
+    field('상담 시간',input('time',log.time,'time'))+'</div>'+
+    checks('channels','상담 유형',['전화','내방','기타'],log.channels)+checks('checks','기기 점검',state.devices,log.checks)+
+    '</div><div class="log-writing">'+field('상담 내용',area('content',log.content,true,10))+
+    field('슈퍼비전',area('supervision',log.supervision,false,5))+field('사진 (JPG, PNG, WebP · 최대 3MB)',
     '<input type="file" name="photo" accept="image/jpeg,image/png,image/webp">')+
-    (log.hasPhoto?'<label><input type="checkbox" name="removePhoto"> 기존 사진 삭제</label>':''),submitButton,async form=>{
+    (log.hasPhoto?'<label><input type="checkbox" name="removePhoto"> 기존 사진 삭제</label>':'')+
+    '</div></div>',submitButton,async form=>{
       const file=form.get('photo');
       if (file.size>3000000) throw new Error('사진은 3MB 이하로 첨부해 주세요.');
       const photo=file.size ? await readAsDataUrl(file) : '';
@@ -276,7 +281,7 @@ function logForm(log = {}, selected) {
       await api('logs'+(log.id?'/'+log.id:''),log.id?'PUT':'POST',
         {...body,channels:form.getAll('channels'),checks:form.getAll('checks'),photo,keepPhoto});
       location.hash='logs';
-    });
+    },'log-editor');
 }
 
 function personDetail(p) {
@@ -296,7 +301,39 @@ function logDetail(log) {
     '<div>'+log.channels.map(c=>pill(c,'channel')).join(' ')+'</div><strong>점검 기기</strong><div>'+text(log.checks.join(', '))+'</div>'+
     '<strong>상담 내용</strong><p class="detail-text">'+text(log.content)+'</p><strong>슈퍼비전</strong><p class="detail-text">'+text(log.supervision)+'</p>'+
     (log.photo?'<img class="photo" alt="모니터링 첨부 사진" src="'+esc(log.photo)+'">':''),
-    log.id>0?button('삭제','delete-log:'+log.id)+button('수정','edit-log:'+log.id,undefined,true):'');
+    log.id>0?button('삭제','delete-log:'+log.id)+button('다운로드','download-log','download')+
+      button('수정','edit-log:'+log.id,undefined,true):'');
+  dialog.querySelector('[data-action="download-log"]')?.addEventListener('click',()=>downloadLog(log,participant));
+}
+
+function downloadLog(log, participant) {
+  const details = [
+    ['참여자',participant?.name],
+    ['상담 일시',[log.date,log.time].filter(Boolean).join(' ')],
+    ['상담 유형',log.channels.join(', ')],
+    ['점검 기기',log.checks.join(', ')],
+    ['상담 내용',log.content],
+    ['슈퍼비전',log.supervision],
+  ];
+  const photo = log.photo ? '<section><h2>사진</h2><img alt="모니터링 첨부 사진" src="'+esc(log.photo)+'"></section>' : '';
+  const documentHtml = '<!doctype html><html lang="ko"><head><meta charset="utf-8">'+
+    '<meta name="viewport" content="width=device-width, initial-scale=1">'+
+    '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; img-src data:">'+
+    '<title>IoT 모니터링 일지</title><style>body{font:15px/1.65 system-ui,sans-serif;color:#15253b;max-width:760px;margin:32px auto;padding:0 20px}'+
+    'h1{font-size:24px;border-bottom:2px solid #235cdf;padding-bottom:10px}section{margin:16px 0}h2{font-size:14px;margin:0 0 4px}'+
+    'p{white-space:pre-wrap;overflow-wrap:anywhere;margin:0}img{max-width:100%;max-height:18cm;object-fit:contain}'+
+    '@media print{body{margin:0;padding:0}h2{break-after:avoid}img{break-inside:avoid}}</style></head><body>'+
+    '<h1>IoT 모니터링 일지</h1>'+details.map(([label,value])=>'<section><h2>'+label+'</h2><p>'+text(value)+'</p></section>').join('')+
+    photo+'</body></html>';
+  const url = URL.createObjectURL(new Blob([documentHtml],{type:'text/html;charset=utf-8'}));
+  const link = document.createElement('a');
+  const name = (participant?.name || '참여자').replace(/[<>:"/\\|?*\u0000-\u001f]/g,'_');
+  link.href = url;
+  link.download = 'IoT 모니터링 일지_'+name+'_'+log.date+'_'+log.id+'.html';
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),30000);
 }
 
 async function action(name,id) {

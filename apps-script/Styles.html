@@ -12,4 +12,62 @@ main{max-width:1510px;margin:0 auto;padding:32px 34px 42px}.page-head{display:fl
 dialog{padding:0;border:1px solid var(--line);border-radius:13px;color:#15253b;width:min(620px,calc(100% - 24px));max-height:90dvh;box-shadow:0 18px 60px #0a163a44}dialog::backdrop{background:#101d3370}.dialog-head,.dialog-foot{padding:15px 20px;display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--line)}.dialog-head h2{margin:0;font-size:19px}.dialog-foot{border-top:1px solid var(--line);border-bottom:0;justify-content:flex-end;flex-wrap:wrap}.dialog-body{padding:16px 20px;display:grid;gap:14px}.field{display:grid;gap:6px;font-weight:700;font-size:13px}.fields{display:grid;grid-template-columns:1fr 1fr;gap:11px}.field textarea{resize:vertical}.check-grid{display:flex;gap:7px;flex-wrap:wrap}.check-grid label{padding:6px;border:1px solid #e1e8f2;border-radius:6px;font-weight:500}.check-grid input{width:auto;vertical-align:middle}.quantity-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.photo{max-width:100%;max-height:260px;border-radius:8px}.detail-text{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}.form-error{color:#a62237;margin:0}#toast{position:fixed;bottom:22px;right:22px;z-index:5;background:#172b48;color:white;padding:11px 15px;border-radius:8px;max-width:calc(100% - 44px)}
 @media(max-width:1060px){.sidebar{width:195px}.workspace{margin-left:195px}.topbar,main{padding-left:22px;padding-right:22px}.metrics{gap:8px}.metric{padding:11px}}
 @media(max-width:780px){.sidebar{position:relative;width:100%;padding:11px 12px;display:block}.brand{margin:0 0 10px;font-size:15px}.brand small,.nav-label,.sidebar-footer{display:none}.logo{width:29px;height:29px}.logo svg{width:19px;height:19px}nav{display:flex;overflow:auto;gap:3px}nav a{padding:7px 8px;white-space:nowrap;font-size:11px;gap:4px}nav svg{width:15px;height:15px}.workspace{margin:0}.topbar{height:42px;padding:0 13px}main{padding:18px 13px 30px}.page-head{align-items:flex-start;flex-direction:column}.page-head h1{font-size:24px}.dashboard-grid{grid-template-columns:1fr}.hero-art{opacity:.35;right:-125px}.metrics{grid-template-columns:repeat(2,1fr)}}
+dialog.log-editor {
+  width: min(1060px, calc(100% - 32px));
+  max-height: 92dvh;
+  overflow: hidden;
+}
+.log-editor form {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  max-height: 92dvh;
+}
+.log-editor .dialog-body {
+  overflow: auto;
+  padding: 22px 24px;
+}
+.log-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  align-items: start;
+  gap: 24px;
+}
+.log-context, .log-writing {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+  gap: 15px;
+}
+.log-context {
+  background: #f6f8fc;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 16px;
+}
+.log-checks {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.log-checks legend {
+  margin-bottom: 7px;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+.log-checks .check-grid label { background: white; }
+.log-checks .check-grid label:has(input:checked) {
+  background: #eaf1ff;
+  border-color: #8aa9ed;
+}
+.log-writing textarea {
+  line-height: 1.6;
+  padding: 11px;
+}
+@media(max-width: 720px) {
+  .log-layout { grid-template-columns: 1fr; gap: 16px; }
+  .log-editor .dialog-body { padding: 14px; }
+  .log-writing textarea[name="content"] { min-height: 180px; }
+}
 </style>
