@@ -138,7 +138,8 @@ function workbookDrawing(photo, row) {
     '</xdr:row><xdr:rowOff>114300</xdr:rowOff></xdr:from><xdr:ext cx="'+cx+'" cy="'+cy+'"/>'+
     '<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="1" name="모니터링 첨부 사진"/><xdr:cNvPicPr/></xdr:nvPicPr>'+
     '<xdr:blipFill><a:blip r:embed="rId1"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>'+
-    '<xdr:spPr><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic>'+
+    '<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="'+cx+'" cy="'+cy+'"/></a:xfrm>'+
+    '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic>'+
     '<xdr:clientData/></xdr:oneCellAnchor></xdr:wsDr>';
 }
 
@@ -150,7 +151,7 @@ async function createLogWorkbook(log, participant) {
     ['/xl/worksheets/sheet1.xml','spreadsheetml.worksheet'],
     ['/xl/styles.xml','spreadsheetml.styles'],
   ];
-  if (photo) overrides.push(['/xl/drawings/drawing1.xml','drawingml.drawing']);
+  if (photo) overrides.push(['/xl/drawings/drawing1.xml','drawing']);
   const contentTypes = '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'+
     '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'+
     '<Default Extension="xml" ContentType="application/xml"/>'+
