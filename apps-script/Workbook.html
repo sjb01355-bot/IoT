@@ -3,6 +3,8 @@ const xlsxMime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sh
 const officeRelationships = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
 const sheetNamespace = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
 const xmlDeclaration = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+const sheetColumnWidth = 12;
+const emuPerPixel = 9525;
 const xmlText = (value) => String(value ?? '').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g,'')
   .replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'})[char]);
 
@@ -71,12 +73,13 @@ async function workbookPhoto(dataUrl) {
   context.fillStyle = '#fff';
   context.fillRect(0,0,canvas.width,canvas.height);
   context.drawImage(image,0,0,canvas.width,canvas.height);
-  const blob = await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',0.9));
+  const blob = await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
   return {width:canvas.width,height:canvas.height,bytes:new Uint8Array(await blob.arrayBuffer())};
 }
 
 function workbookSheet(log, participant, photo) {
   const rows = [], merges = [];
+  let sheetHeight = 0;
   function add(height, cells = []) {
     const row = rows.length+1;
     const entries = cells.flatMap(([first,last,value,style])=>{
@@ -86,6 +89,7 @@ function workbookSheet(log, participant, photo) {
           xmlText(value)+'</t></is></c>' : '/>'));
     });
     rows.push('<row r="'+row+'" ht="'+height+'" customHeight="1">'+entries.join('')+'</row>');
+    sheetHeight += height;
     return row;
   }
   const full = (height,value,style)=>add(height,[['A','H',value,style]]);
@@ -118,34 +122,45 @@ function workbookSheet(log, participant, photo) {
   }
   add(10);
   full(24,'첨부 사진',3);
+  const photoTop = sheetHeight;
   const photoRow = photo ? full(Math.ceil(photo.height*.75)+23,'',9) : full(28,'첨부 사진 없음',9);
   const sheet = '<worksheet xmlns="'+sheetNamespace+'" xmlns:r="'+officeRelationships+'">'+
     '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><dimension ref="A1:H'+rows.length+'"/>'+
     '<sheetViews><sheetView showGridLines="0" workbookViewId="0"/></sheetViews>'+
-    '<sheetFormatPr defaultRowHeight="15"/><cols><col min="1" max="8" width="12" customWidth="1"/></cols>'+
+    '<sheetFormatPr defaultRowHeight="15"/><cols><col min="1" max="8" width="'+sheetColumnWidth+'" customWidth="1"/></cols>'+
     '<sheetData>'+rows.join('')+'</sheetData><mergeCells count="'+merges.length+'">'+merges.map(ref=>'<mergeCell ref="'+ref+'"/>').join('')+
     '</mergeCells><printOptions horizontalCentered="1"/><pageMargins left="0.32" right="0.32" top="0.45" bottom="0.45" header="0.2" footer="0.2"/>'+
     '<pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="0"/>'+
     (photo?'<drawing r:id="rId1"/>':'')+'</worksheet>';
-  return {sheet, photoRow,lastRow:rows.length};
+  return {sheet,photoRow,photoTop,lastRow:rows.length};
 }
 
-function workbookDrawing(photo, row) {
-  const cx = photo.width*9525, cy = photo.height*9525;
+function workbookDrawing(photo, row, photoTop) {
+  const margin = 12;
+  // Excel column widths are stored in character units, with a 7 px digit width
+  // for the workbook's 11 pt default font.
+  const columnPixels = sheetColumnWidth*7;
+  const right = margin+photo.width;
+  const cx = photo.width*emuPerPixel, cy = photo.height*emuPerPixel;
+  const marker = (tag,column,left,top)=>'<xdr:'+tag+'><xdr:col>'+column+'</xdr:col>'+
+    '<xdr:colOff>'+left*emuPerPixel+'</xdr:colOff><xdr:row>'+(row-1)+'</xdr:row>'+
+    '<xdr:rowOff>'+top*emuPerPixel+'</xdr:rowOff></xdr:'+tag+'>';
   return '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"'+
     ' xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="'+officeRelationships+'">'+
-    '<xdr:oneCellAnchor><xdr:from><xdr:col>0</xdr:col><xdr:colOff>114300</xdr:colOff><xdr:row>'+(row-1)+
-    '</xdr:row><xdr:rowOff>114300</xdr:rowOff></xdr:from><xdr:ext cx="'+cx+'" cy="'+cy+'"/>'+
-    '<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="1" name="모니터링 첨부 사진"/><xdr:cNvPicPr/></xdr:nvPicPr>'+
+    '<xdr:twoCellAnchor editAs="oneCell">'+marker('from',0,margin,margin)+
+    marker('to',Math.floor(right/columnPixels),right%columnPixels,margin+photo.height)+
+    '<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="1" name="모니터링 첨부 사진"/>'+
+    '<xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>'+
     '<xdr:blipFill><a:blip r:embed="rId1"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>'+
-    '<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="'+cx+'" cy="'+cy+'"/></a:xfrm>'+
+    '<xdr:spPr><a:xfrm><a:off x="'+margin*emuPerPixel+'" y="'+(photoTop*12700+margin*emuPerPixel)+'"/>'+
+    '<a:ext cx="'+cx+'" cy="'+cy+'"/></a:xfrm>'+
     '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic>'+
-    '<xdr:clientData/></xdr:oneCellAnchor></xdr:wsDr>';
+    '<xdr:clientData/></xdr:twoCellAnchor></xdr:wsDr>';
 }
 
 async function createLogWorkbook(log, participant) {
   const photo = await workbookPhoto(log.photo);
-  const {sheet,photoRow,lastRow} = workbookSheet(log,participant,photo);
+  const {sheet,photoRow,photoTop,lastRow} = workbookSheet(log,participant,photo);
   const overrides = [
     ['/xl/workbook.xml','spreadsheetml.sheet.main'],
     ['/xl/worksheets/sheet1.xml','spreadsheetml.worksheet'],
@@ -155,7 +170,7 @@ async function createLogWorkbook(log, participant) {
   const contentTypes = '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'+
     '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'+
     '<Default Extension="xml" ContentType="application/xml"/>'+
-    (photo?'<Default Extension="jpg" ContentType="image/jpeg"/>':'')+
+    (photo?'<Default Extension="png" ContentType="image/png"/>':'')+
     overrides.map(([part,type])=>'<Override PartName="'+part+'" ContentType="application/vnd.openxmlformats-officedocument.'+type+'+xml"/>').join('')+'</Types>';
   const name = '모니터링 일지';
   const workbook = '<workbook xmlns="'+sheetNamespace+'" xmlns:r="'+officeRelationships+'">'+
@@ -172,9 +187,9 @@ async function createLogWorkbook(log, participant) {
   ]);
   if (photo) {
     parts.set('xl/worksheets/_rels/sheet1.xml.rels',workbookRelationships([['drawing','../drawings/drawing1.xml']]));
-    parts.set('xl/drawings/drawing1.xml',workbookDrawing(photo,photoRow));
-    parts.set('xl/drawings/_rels/drawing1.xml.rels',workbookRelationships([['image','../media/photo.jpg']]));
-    parts.set('xl/media/photo.jpg',photo.bytes);
+    parts.set('xl/drawings/drawing1.xml',workbookDrawing(photo,photoRow,photoTop));
+    parts.set('xl/drawings/_rels/drawing1.xml.rels',workbookRelationships([['image','../media/photo.png']]));
+    parts.set('xl/media/photo.png',photo.bytes);
   }
   return zipWorkbook(parts);
 }
