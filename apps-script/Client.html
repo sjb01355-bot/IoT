@@ -264,22 +264,26 @@ function logForm(log = {}, selected) {
     (checked.includes(v)?'checked':'')+'> '+esc(v)+'</label>').join('')+'</div></fieldset>';
   const people = '<select name="participant_id" required><option value="">참여자 선택</option>'+state.participants.map(p=>
     option(p.id,p.name+(p.region?' · '+p.region:''),log.participant_id??selected)).join('')+'</select>';
+  const photoFields = ['왼쪽 사진','오른쪽 사진'].map((label,index)=>'<div>'+
+    field(label,'<input type="file" name="photo'+index+'" accept="image/jpeg,image/png,image/webp">')+
+    (log.photos?.[index]?'<label><input type="checkbox" name="removePhoto'+index+'"> 기존 사진 삭제</label>':'')+
+    '</div>').join('');
   openDialog(log.id?'일지 수정':'일지 작성','<div class="log-layout"><div class="log-context">'+
     field('참여자',people)+'<div class="fields">'+field('상담 날짜',input('date',log.date||today,'date','required'))+
     field('상담 시간',input('time',log.time,'time'))+'</div>'+
     checks('channels','상담 유형',['전화','내방','기타'],log.channels)+checks('checks','기기 점검',state.devices,log.checks)+
     '</div><div class="log-writing">'+field('상담 내용',area('content',log.content,true,10))+
-    field('슈퍼비전',area('supervision',log.supervision,false,5))+field('사진 (JPG, PNG, WebP · 최대 3MB)',
-    '<input type="file" name="photo" accept="image/jpeg,image/png,image/webp">')+
-    (log.hasPhoto?'<label><input type="checkbox" name="removePhoto"> 기존 사진 삭제</label>':'')+
+    field('슈퍼비전',area('supervision',log.supervision,false,5))+
+    '<fieldset class="log-checks"><legend>첨부 사진 (JPG, PNG, WebP · 장당 최대 3MB)</legend>'+
+    '<div class="log-photos">'+photoFields+'</div></fieldset>'+
     '</div></div>',submitButton,async form=>{
-      const file=form.get('photo');
-      if (file.size>3000000) throw new Error('사진은 3MB 이하로 첨부해 주세요.');
-      const photo=file.size ? await readAsDataUrl(file) : '';
-      const keepPhoto=Boolean(log.hasPhoto && !file.size && !form.has('removePhoto'));
+      const files=[form.get('photo0'),form.get('photo1')];
+      if (files.some(file=>file.size>3000000)) throw new Error('사진은 한 장당 3MB 이하로 첨부해 주세요.');
+      const photos=await Promise.all(files.map(file=>file.size ? readAsDataUrl(file) : ''));
+      const keepPhotos=files.map((file,index)=>Boolean(log.photos?.[index] && !file.size && !form.has('removePhoto'+index)));
       const body=Object.fromEntries(['participant_id','date','time','content','supervision'].map(k=>[k,form.get(k)]));
       await api('logs'+(log.id?'/'+log.id:''),log.id?'PUT':'POST',
-        {...body,channels:form.getAll('channels'),checks:form.getAll('checks'),photo,keepPhoto});
+        {...body,channels:form.getAll('channels'),checks:form.getAll('checks'),photos,keepPhotos});
       location.hash='logs';
     },'log-editor');
 }
@@ -297,12 +301,15 @@ function personDetail(p) {
 
 function logDetail(log) {
   const participant=records().participants.find(p=>p.id===log.participant_id);
+  const pictures=log.photos?.some(Boolean)?'<div class="log-photos">'+log.photos.map((photo,index)=>photo?
+    '<img class="photo" alt="'+(index===0?'왼쪽 사진':'오른쪽 사진')+'" src="'+esc(photo)+'">':'<span></span>').join('')+'</div>':'';
   openDialog('모니터링 일지','<strong>'+text(participant?.name)+' · '+text(log.date)+' '+esc(log.time)+'</strong>'+
     '<div>'+log.channels.map(c=>pill(c,'channel')).join(' ')+'</div><strong>점검 기기</strong><div>'+text(log.checks.join(', '))+'</div>'+
     '<strong>상담 내용</strong><p class="detail-text">'+text(log.content)+'</p><strong>슈퍼비전</strong><p class="detail-text">'+text(log.supervision)+'</p>'+
-    (log.photo?'<img class="photo" alt="모니터링 첨부 사진" src="'+esc(log.photo)+'">':''),
+    pictures,
     log.id>0?button('삭제','delete-log:'+log.id)+button('다운로드','download-log','download')+
       button('수정','edit-log:'+log.id,undefined,true):'');
+  dialog.querySelector('[data-action="edit-log:'+log.id+'"]')?.addEventListener('click',()=>logForm(log));
   const download = dialog.querySelector('[data-action="download-log"]');
   download?.addEventListener('click',async ()=>{
     download.disabled = true;
@@ -338,7 +345,6 @@ async function action(name,id) {
     return render();
   }
   if (name==='edit-person') return personForm(state.participants.find(p=>p.id===id));
-  if (name==='edit-log') return logForm(state.logs.find(l=>l.id===id));
   if (name==='delete-person' || name==='delete-log') {
     const person=name==='delete-person';
     if (!confirm(person?'참여자와 연결된 일지를 모두 삭제하시겠습니까?':'이 일지를 삭제하시겠습니까?')) return;
@@ -368,7 +374,7 @@ document.addEventListener('click',event=>{
     const record=records().logs.find(l=>l.id===Number(log));
     if (record.hasPhoto) {
       target.disabled=true;
-      api('logs/'+log+'/photo').then(({photo})=>logDetail({...record,photo}))
+      api('logs/'+log+'/photo').then(({photos})=>logDetail({...record,photos}))
         .catch(error=>notify(error.message)).finally(()=>{target.disabled=false;});
     } else logDetail(record);
   }

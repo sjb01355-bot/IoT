@@ -65,9 +65,17 @@ dialog.log-editor {
   line-height: 1.6;
   padding: 11px;
 }
+.log-photos {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 10px;
+}
+.log-photos > div { min-width: 0; }
+.log-photos .field input { width: 100%; }
 @media(max-width: 720px) {
   .log-layout { grid-template-columns: 1fr; gap: 16px; }
   .log-editor .dialog-body { padding: 14px; }
   .log-writing textarea[name="content"] { min-height: 180px; }
+  .log-editor .log-photos { grid-template-columns: 1fr; }
 }
 </style>

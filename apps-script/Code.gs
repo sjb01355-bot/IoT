@@ -139,10 +139,11 @@ function photo_(input) {
   return input;
 }
 
-function readPhoto_(sheet, record) {
-  if (!record.photoCount) return '';
-  return sheet.getRange(record.row, HEADERS.length+1, 1, record.photoCount)
+function readPhotos_(sheet, record) {
+  if (!record.photoCount) return ['', ''];
+  const stored = sheet.getRange(record.row, HEADERS.length+1, 1, record.photoCount)
     .getValues()[0].map(fragment=>String(fragment).slice(4)).join('');
+  return stored.startsWith('[') ? JSON.parse(stored) : [stored, ''];
 }
 
 function roster_(input) {
@@ -237,7 +238,11 @@ function edit_(spreadsheet, table, method, rawId, body) {
     if (!records_(spreadsheet.getSheetByName(TABS.participants)).some(p=>p.id===record.body.participant_id)) {
       throw new Error('연결할 참여자를 확인해 주세요.');
     }
-    photo = body.photo ? photo_(body.photo) : (body.keepPhoto ? readPhoto_(sheet, record) : '');
+    const prior = readPhotos_(sheet, record);
+    const photos = Array.isArray(body.photos) && body.photos.length === 2
+      ? body.photos.map((input, index)=>input ? photo_(input) : (body.keepPhotos?.[index] ? prior[index] : ''))
+      : [body.photo ? photo_(body.photo) : (body.keepPhoto ? prior[0] : ''), prior[1]];
+    photo = photos.some(Boolean) ? JSON.stringify(photos) : '';
   }
   write_(sheet,record,photo);
   return {id:record.id};
@@ -257,7 +262,8 @@ function oasisRequest(path, method, body) {
       const sheet = database.getSheetByName(TABS.logs);
       const record = records_(sheet).find(r=>r.id===Number(photo[1]));
       if (!record) throw new Error('일지를 찾을 수 없습니다.');
-      return {photo:readPhoto_(sheet,record)};
+      const photos = readPhotos_(sheet,record);
+      return {photos,photo:photos[0]};
     }
     const route = /^(participants|logs)(?:\/(\d+))?$/.exec(path);
     if (route && (method === 'POST' && !route[2] || ['PUT','DELETE'].includes(method) && route[2])) {
