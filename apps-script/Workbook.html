@@ -23,9 +23,12 @@ function workbookStyles() {
   const formats = [
     [0,0,0], [1,2,0], [2,2,0], [3,3,0], [4,4,1],
     [0,0,1], [4,5,1], [5,6,1], [6,5,1], [0,5,1],
-  ].map(([font,fill,borderId],i)=>'<xf numFmtId="0" fontId="'+font+'" fillId="'+fill+'" borderId="'+borderId+
-    '" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="'+
-    ([7,8].includes(i)?'center':'left')+'" vertical="'+(i===5?'top':'center')+'" wrapText="1"'+([7,8].includes(i)?'':' indent="1"')+'/></xf>');
+  ].map(([font,fill,borderId],i)=>{
+    const centered = [1,7,8].includes(i);
+    return '<xf numFmtId="0" fontId="'+font+'" fillId="'+fill+'" borderId="'+borderId+
+      '" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="'+
+      (centered?'center':'left')+'" vertical="'+(i===5?'top':'center')+'" wrapText="1"'+(centered?'':' indent="1"')+'/></xf>';
+  });
   return '<styleSheet xmlns="'+sheetNamespace+'"><fonts count="'+fonts.length+'">'+fonts.join('')+'</fonts>'+
     '<fills count="'+(fills.length+2)+'"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>'+
     fills.join('')+'</fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border>'+
@@ -90,7 +93,7 @@ function workbookSheet(log, participant, photo) {
     ['A','B',label,4],['C','D',value||'—',9],['E','F',label2,4],['G','H',value2||'—',9],
   ]);
   full(37,'IoT 모니터링 일지',1);
-  full(23,'오아시스  |  경기북부 성인장애인 IoT 보급사업',2);
+  full(23,'경기북부 성인장애인 IoT 보급사업',2);
   add(10);
   full(24,'상담 기본 정보',3);
   fields('참여자',participant?.name,'지역',participant?.region);
