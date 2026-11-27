@@ -303,33 +303,25 @@ function logDetail(log) {
     (log.photo?'<img class="photo" alt="모니터링 첨부 사진" src="'+esc(log.photo)+'">':''),
     log.id>0?button('삭제','delete-log:'+log.id)+button('다운로드','download-log','download')+
       button('수정','edit-log:'+log.id,undefined,true):'');
-  dialog.querySelector('[data-action="download-log"]')?.addEventListener('click',()=>downloadLog(log,participant));
+  const download = dialog.querySelector('[data-action="download-log"]');
+  download?.addEventListener('click',async ()=>{
+    download.disabled = true;
+    try {
+      await downloadLog(log,participant);
+    } catch {
+      notify('일지 파일을 만들 수 없습니다. 첨부 사진을 확인한 뒤 다시 시도해 주세요.');
+    } finally {
+      download.disabled = false;
+    }
+  });
 }
 
-function downloadLog(log, participant) {
-  const details = [
-    ['참여자',participant?.name],
-    ['상담 일시',[log.date,log.time].filter(Boolean).join(' ')],
-    ['상담 유형',log.channels.join(', ')],
-    ['점검 기기',log.checks.join(', ')],
-    ['상담 내용',log.content],
-    ['슈퍼비전',log.supervision],
-  ];
-  const photo = log.photo ? '<section><h2>사진</h2><img alt="모니터링 첨부 사진" src="'+esc(log.photo)+'"></section>' : '';
-  const documentHtml = '<!doctype html><html lang="ko"><head><meta charset="utf-8">'+
-    '<meta name="viewport" content="width=device-width, initial-scale=1">'+
-    '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; img-src data:">'+
-    '<title>IoT 모니터링 일지</title><style>body{font:15px/1.65 system-ui,sans-serif;color:#15253b;max-width:760px;margin:32px auto;padding:0 20px}'+
-    'h1{font-size:24px;border-bottom:2px solid #235cdf;padding-bottom:10px}section{margin:16px 0}h2{font-size:14px;margin:0 0 4px}'+
-    'p{white-space:pre-wrap;overflow-wrap:anywhere;margin:0}img{max-width:100%;max-height:18cm;object-fit:contain}'+
-    '@media print{body{margin:0;padding:0}h2{break-after:avoid}img{break-inside:avoid}}</style></head><body>'+
-    '<h1>IoT 모니터링 일지</h1>'+details.map(([label,value])=>'<section><h2>'+label+'</h2><p>'+text(value)+'</p></section>').join('')+
-    photo+'</body></html>';
-  const url = URL.createObjectURL(new Blob([documentHtml],{type:'text/html;charset=utf-8'}));
+async function downloadLog(log, participant) {
+  const url = URL.createObjectURL(await createLogWorkbook(log,participant));
   const link = document.createElement('a');
   const name = (participant?.name || '참여자').replace(/[<>:"/\\|?*\u0000-\u001f]/g,'_');
   link.href = url;
-  link.download = 'IoT 모니터링 일지_'+name+'_'+log.date+'_'+log.id+'.html';
+  link.download = 'IoT 모니터링 일지_'+name+'_'+log.date+'_'+log.id+'.xlsx';
   document.body.append(link);
   link.click();
   link.remove();
