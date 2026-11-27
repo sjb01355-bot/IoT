@@ -136,7 +136,7 @@ function overview(participants, logs) {
     return all;
   }, Object.create(null))).sort((a,b)=>b[1]-a[1]);
   const metrics = [['전체 참여자',participants.length,'명','users','등록된 참여자'],['설치 완료',installed,'명','check','전체 참여자 중 '+(participants.length?Math.round(installed/participants.length*100):0)+'%'],['보급 기기',supplied,'대','box','설치 완료 참여자 기준'],['이번 달 일지',month,'건','file','전체 일지 '+logs.length+'건']];
-  return '<section class="hero"><div class="hero-copy"><h2>경기북부 성인장애인 IoT 보급사업</h2><p>참여자별 설치 현황과 모니터링 기록을 확인하세요.</p>'+
+  return '<section class="hero"><div class="hero-copy"><h2>사물인터넷 실태점검</h2><p>참여자별 설치 현황과 모니터링 기록을 확인하세요.</p>'+
     '<a class="btn" href="#participants">참여자 현황 보기 '+icon('chevron')+'</a></div><div class="hero-art">'+artwork+'</div></section>'+
     '<section class="metrics" aria-label="사업 현황">'+metrics.map(([label,value,unit,symbol,note])=>'<article class="metric"><span class="metric-label">'+label+
       '</span><strong class="metric-number">'+number(value)+'<small>'+unit+'</small></strong><span class="metric-icon">'+icon(symbol)+'</span><span class="metric-note">'+note+'</span></article>').join('')+'</section>'+
@@ -161,7 +161,7 @@ function render() {
   const logButton = button('일지 작성','new-log','plus',true);
   const personButton = button('참여자 등록','new-person','plus',true);
   const headers = {
-    overview:['사업 대시보드','오아시스 사업의 주요 현황을 한눈에 확인하세요.',importButton+logButton],
+    overview:['실태점검 대시보드','참여자, 기기 보급, 모니터링 현황을 확인하세요.',importButton+logButton],
     participants:[labels.participants,'참여자 정보와 설치 상태를 관리하세요.',importButton+personButton],
     logs:[labels.logs,'참여자별 상담과 기기 점검 기록을 관리하세요.',logButton],
     devices:[labels.devices,'기기별 등록 수량과 설치 완료 수량을 확인하세요.',''],

@@ -8,7 +8,7 @@ const PHOTO_CHUNK = 40000;
 
 function doGet() {
   return HtmlService.createTemplateFromFile('Index').evaluate()
-    .setTitle('오아시스 · IoT 보급사업')
+    .setTitle('사물인터넷 실태점검')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
@@ -152,8 +152,8 @@ function roster_(input) {
   }
   const bytes = Utilities.base64Decode(input);
   const blob = Utilities.newBlob(bytes,
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'oasis-roster.xlsx');
-  const converted = Drive.Files.create({name:'오아시스 명단 가져오기 임시 파일',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'iot-inspection-roster.xlsx');
+  const converted = Drive.Files.create({name:'사물인터넷 실태점검 명단 가져오기 임시 파일',
     mimeType:'application/vnd.google-apps.spreadsheet'}, blob, {fields:'id'});
   try {
     const spreadsheet = SpreadsheetApp.openById(converted.id);
@@ -167,7 +167,7 @@ function roster_(input) {
 
 function parseRoster_(values, display) {
   if (display[1][0].trim() !== '번호' || display[1][3].trim() !== '연락처') {
-    throw new Error('오아시스 설치명단 양식인지 확인해 주세요.');
+    throw new Error('설치명단 엑셀 양식인지 확인해 주세요.');
   }
   const result = [];
   const sources = new Set();
